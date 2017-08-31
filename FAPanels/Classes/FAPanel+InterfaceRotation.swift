@@ -45,17 +45,23 @@ extension FAPanelController {
         }
     }
     
-    
-    open override var preferredStatusBarStyle: UIStatusBarStyle {
-        
-        switch state {
-        case .center:
-            return centerPanelVC!.preferredStatusBarStyle
-        case .left:
-            return leftPanelVC!.preferredStatusBarStyle
-        case .right:
-            return rightPanelVC!.preferredStatusBarStyle
-        }
+  
+  open override var preferredStatusBarStyle: UIStatusBarStyle {
+    switch state {
+    case .center:
+      if let centerPanelVC = centerPanelVC {
+        return centerPanelVC.preferredStatusBarStyle
+      }
+    case .left:
+      if let leftPanelVC = leftPanelVC {
+        return leftPanelVC.preferredStatusBarStyle
+      }
+    case .right:
+      if let rightPanelVC = rightPanelVC {
+        return rightPanelVC.preferredStatusBarStyle
+      }
     }
+    return super.preferredStatusBarStyle
+  }
 }
 
