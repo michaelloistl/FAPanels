@@ -18,6 +18,37 @@
 
 
 
+## New Features Added ( > 0.2.1 only)
+---
+
+- [x] Left panel position (front/back) to center panel
+- [x] Shadow on left panel, if left panel position is front 
+- [x] FAPanel State Delegate feature
+
+
+### Left Panel Position
+
+| back | front | 
+| --- | --- |
+| ![](http://i.imgur.com/f7slmmx.gif) |  ![](http://i.imgur.com/T7AgNl1.gif)
+
+
+### Usage
+
+
+
+```swift
+
+//  Set the Left Panel position
+
+let rootController: FAPanelController = window?.rootViewController as! FAPanelController
+
+rootController.leftPanelPosition = .front
+rootController.leftPanelPosition = .back
+
+
+```
+
 
 ## Features
 ---
@@ -119,6 +150,13 @@ var handleAutoRotation: Bool = true
 // Applies corner radius to panels
 
 var cornerRadius: CGFloat = 0.0
+
+
+// Shadow configurations
+
+open var shadowColor   : CGColor = UIColor.black.cgColor
+open var shadowOffset  : CGSize  = CGSize(width: 10.0, height: 0.0)
+open var shadowOppacity: Float = 0.5
 
 
 // Remove panels from super view when possible

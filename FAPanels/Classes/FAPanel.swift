@@ -9,6 +9,51 @@
 import UIKit
 
 
+// FAPanel Delegate
+
+public protocol FAPanelStateDelegate {
+    
+    func centerPanelWillBecomeActive()
+    func leftPanelWillBecomeActive()
+    func rightPanelWillBecomeActive()
+    
+    func centerPanelDidBecomeActive()
+    func leftPanelDidBecomeActive()
+    func rightPanelDidBecomeActive()
+}
+
+public extension FAPanelStateDelegate {
+    
+    func centerPanelWillBecomeActive() {}
+    func leftPanelWillBecomeActive() {}
+    func rightPanelWillBecomeActive() {}
+    
+    func centerPanelDidBecomeActive() {}
+    func leftPanelDidBecomeActive() {}
+    func rightPanelDidBecomeActive() {}
+}
+
+
+
+
+
+
+
+
+
+// Left Panel Position
+
+public enum FALeftPanelPosition: Int {
+    case front = 0, back
+}
+
+
+
+
+
+
+
+// FAPanel Controller
 
 open class FAPanelController: UIViewController {
 
@@ -99,7 +144,6 @@ open class FAPanelController: UIViewController {
         layoutSideContainers(withDuration: 0.0, animated: false)
         layoutSidePanelVCs()
         centerPanelContainer.frame = updateCenterPanelSlidingFrame()
-        applyStyle(onContainer: centerPanelContainer, withDuration: 0.0, animated: false)
     }
 
     
@@ -109,6 +153,19 @@ open class FAPanelController: UIViewController {
         _ = updateCenterPanelSlidingFrame()
     }
 
+    
+    override open func viewWillLayoutSubviews() {
+
+        super.viewWillLayoutSubviews()
+        
+        let shadowPath = UIBezierPath(rect: leftPanelContainer.bounds)
+        leftPanelContainer.layer.masksToBounds = false
+        leftPanelContainer.layer.shadowColor = configs.shadowColor
+        leftPanelContainer.layer.shadowOffset = configs.shadowOffset
+        leftPanelContainer.layer.shadowOpacity = configs.shadowOppacity
+        leftPanelContainer.layer.shadowPath = shadowPath.cgPath
+
+    }
     
     
     deinit {
@@ -126,6 +183,7 @@ open class FAPanelController: UIViewController {
         centeralPanelSlidingFrame = self.centerPanelContainer.frame
         centerPanelHidden = false
         leftPanelContainer = UIView(frame: view.bounds)
+        layoutLeftContainer()
         leftPanelContainer.isHidden = true
         rightPanelContainer = UIView(frame: view.bounds)
         rightPanelContainer.isHidden = true
@@ -134,7 +192,7 @@ open class FAPanelController: UIViewController {
         view.addSubview(leftPanelContainer)
         view.addSubview(rightPanelContainer)
         state = .center
-        swapCenter(animated: false, FromVC: nil, ofState: .center, withVC: centerPanelVC)
+        swapCenter(animated: false, FromVC: nil, withVC: centerPanelVC)
         view.bringSubview(toFront: centerPanelContainer)
     }
     
@@ -168,20 +226,45 @@ open class FAPanelController: UIViewController {
     internal var rightPanelContainer : UIView!
     internal var centerPanelContainer: UIView!
 
-    internal var visiblePanelVC: UIViewController! {
-        didSet {
-            
-            if let bgColor = visiblePanelVC.view?.backgroundColor {
-                centerPanelContainer.backgroundColor =  bgColor
-            }
-        }
-    }
+    internal var visiblePanelVC: UIViewController!
+    internal var centeralPanelSlidingFrame: CGRect   = CGRect.zero
+    internal var centerPanelOriginBeforePan: CGPoint = CGPoint.zero
+    internal var leftPanelOriginBeforePan: CGPoint   = CGPoint.zero
 
-    internal var centeralPanelSlidingFrame: CGRect = CGRect.zero
-    internal var originBeforePan: CGPoint = CGPoint.zero
 
     internal let keyPathOfView = "view"
     internal static var kvoContext: Character!
+    
+    
+    internal var _leftPanelPosition : FALeftPanelPosition = .back {
+        
+        didSet {
+            
+            if _leftPanelPosition == .front {
+                configs.resizeLeftPanel = false
+            }
+        
+            layoutLeftContainer()
+        }
+    }
+    
+    internal var isLeftPanelOnFront : Bool {
+        return leftPanelPosition == .front
+    }
+    
+    open var leftPanelPosition : FALeftPanelPosition {
+        
+        get {
+            return _leftPanelPosition
+        }
+        set {
+            _leftPanelPosition = newValue
+        }
+    }
+    
+    
+    internal enum GestureStartDirection: UInt { case left = 0, right, none }
+    internal var paningStartDirection: GestureStartDirection = .none
     
     
     internal var _leftPanelVC: UIViewController? = nil
@@ -260,24 +343,32 @@ open class FAPanelController: UIViewController {
             }
             
             if isViewLoaded && state == .center {
-                swapCenter(animated: configs.changeCenterPanelAnimated, FromVC: previousVC, ofState: .center, withVC: _centerPanelVC!)
+                swapCenter(animated: configs.changeCenterPanelAnimated, FromVC: previousVC, withVC: _centerPanelVC!)
             }
             else if (self.isViewLoaded) {
+
+                if state == .left {
+                    
+                    if isLeftPanelOnFront {
+                        
+                        swapCenter(animated: false,FromVC: previousVC, withVC: self._centerPanelVC)
+                        slideLeftPanelOut(animated: true)
+                        return
+                    }
+                }
                 
-                let previousState: FAPanelVisibleState = state
-                state = .center
                 
                 UIView.animate(withDuration: 0.2, animations: {
                     
                     if self.configs.bounceOnCenterPanelChange {
-                        let x: CGFloat  = (previousState == .left) ? self.view.bounds.size.width : -self.view.bounds.size.width
+                        let x: CGFloat  = (self.state == .left) ? self.view.bounds.size.width : -self.view.bounds.size.width
                         self.centeralPanelSlidingFrame.origin.x = x
                     }
                     self.centerPanelContainer.frame = self.centeralPanelSlidingFrame
                     
                 }, completion: { (finised) in
   
-                    self.swapCenter(animated: false,FromVC: previousVC, ofState: previousState, withVC: self._centerPanelVC)
+                    self.swapCenter(animated: false,FromVC: previousVC, withVC: self._centerPanelVC)
                     self.openCenter(animated: true, shouldBounce: false)
                 })
             }
@@ -289,7 +380,24 @@ open class FAPanelController: UIViewController {
     
     
     
+    //  Left panel frame on basis of its position type i.e: front or back
     
+    internal func layoutLeftContainer() {
+   
+        if isLeftPanelOnFront {
+
+            if leftPanelContainer != nil {
+                
+                var frame = leftPanelContainer.frame
+                frame.size.width = widthForLeftPanelVC
+                frame.origin.x = -widthForLeftPanelVC
+                leftPanelContainer.frame = frame
+            }
+        }
+        else {
+            leftPanelContainer.frame = view.bounds
+        }
+    }
     
     
     
@@ -314,9 +422,7 @@ open class FAPanelController: UIViewController {
                     _tapView?.frame = centerPanelContainer.bounds
                     _tapView?.autoresizingMask = [.flexibleWidth, .flexibleHeight]
                     addTapGestureToView(view: _tapView!)
-                    if configs.canRecognizePanGesture {
-                        addPanGesture(toView: _tapView!)
-                    }
+                    if configs.canRecognizePanGesture { addPanGesture(toView: _tapView!) }
                     centerPanelContainer.addSubview(_tapView!)
                 }
             }
@@ -368,32 +474,12 @@ open class FAPanelController: UIViewController {
     
     //  style for panels
     
-    internal func applyStyle(onContainer: UIView, withDuration duration: TimeInterval, animated: Bool) {
-        
-        let shadowPath: UIBezierPath = UIBezierPath(roundedRect: onContainer.bounds, cornerRadius: 0.0)
-        
-        if animated {
-            
-            let animation = CABasicAnimation(keyPath: "shadowPath")
-            animation.fromValue = onContainer.layer.shadowPath
-            animation.toValue = shadowPath.cgPath
-            animation.duration = duration
-            onContainer.layer.add(animation, forKey: "shadowPath")
-        }
-        onContainer.layer.shadowPath = shadowPath.cgPath
-        onContainer.layer.shadowColor = UIColor.black.cgColor
-        onContainer.layer.shadowRadius = 8.0
-        onContainer.layer.shadowOpacity = 0.70
-        onContainer.clipsToBounds = false
-    }
-    
-    
     internal func applyStyle(onView: UIView) {
         
         onView.layer.cornerRadius = configs.cornerRadius
         onView.clipsToBounds = true
     }
-    
+
     
     
 
@@ -404,7 +490,44 @@ open class FAPanelController: UIViewController {
     
     //  Panel States
 
-    internal  var _state: FAPanelVisibleState = .center
+    open var delegate: FAPanelStateDelegate? = nil
+    
+    internal  var _state: FAPanelVisibleState = .center {
+        
+        willSet {
+            
+            switch newValue {
+            case .center:
+                delegate?.centerPanelWillBecomeActive()
+                break
+                
+            case .left:
+                delegate?.leftPanelWillBecomeActive()
+                break
+                
+            case .right:
+                delegate?.rightPanelWillBecomeActive()
+                break
+            }
+        }
+        didSet {
+
+            switch _state {
+            case .center:
+                delegate?.centerPanelDidBecomeActive()
+                break
+                
+            case .left:
+                delegate?.leftPanelDidBecomeActive()
+                break
+                
+            case .right:
+                delegate?.rightPanelDidBecomeActive()
+                break
+            }
+        }
+    }
+
     internal  var  state: FAPanelVisibleState {
         get{
             return _state

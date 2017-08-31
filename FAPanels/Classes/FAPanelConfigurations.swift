@@ -25,7 +25,6 @@ public enum FAPanelVisibleState: Int {
 
 
 
-
 // Configurations for Panels
 
 open class FAPanelConfigurations: NSObject {
@@ -113,6 +112,15 @@ open class FAPanelConfigurations: NSObject {
     
     
     
+    // Shadow configurations
+    
+    open var shadowColor   : CGColor = UIColor.black.cgColor
+    open var shadowOffset  : CGSize  = CGSize(width: 5.0, height: 0.0)
+    open var shadowOppacity: Float = 0.7
+
+    
+    
+    
     // Remove panels from super view when possible
     
     open var unloadRightPanel: Bool = false
@@ -140,7 +148,7 @@ open class FAPanelConfigurations: NSObject {
     open var changeCenterPanelAnimated : Bool = true
     open var centerPanelTransitionType : FAPanelTransitionType = .boxFade
     open var centerPanelTransitionDuration: TimeInterval = 0.40
-    
+ 
 }
 
 
