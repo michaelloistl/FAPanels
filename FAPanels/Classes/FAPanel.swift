@@ -12,8 +12,18 @@ import UIKit
 
 open class FAPanelController: UIViewController {
 
-    
-    
+  public var leftVC: UIViewController? {
+    return leftPanelVC
+  }
+  
+  public var centerVC: UIViewController? {
+    return centerPanelVC
+  }
+  
+  public var rightVC: UIViewController? {
+    return rightPanelVC
+  }
+  
     
     //  MARK:- Open
     
